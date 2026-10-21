@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: bilheteria
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bilheteria
+    username: app
+    password: app
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+server:
+  port: 8080
