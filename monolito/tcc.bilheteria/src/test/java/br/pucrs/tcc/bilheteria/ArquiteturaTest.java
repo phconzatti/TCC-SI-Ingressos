@@ -25,4 +25,9 @@ class ArquiteturaTest {
     static final ArchRule nucleoNaoDependeDeAdaptadores = noClasses()
         .that().resideInAnyPackage("..domain..", "..application..")
         .should().dependOnClassesThat().resideInAnyPackage("..adapter..");
+
+    @ArchTest
+    static final ArchRule kernelEContratosSemFrameworks = noClasses()
+        .that().resideInAnyPackage("..compartilhado.kernel..", "..compartilhado.contratos..")
+        .should().dependOnClassesThat().resideInAnyPackage("org.springframework..", "jakarta..", "com.fasterxml..", "tools.jackson..");
 }
