@@ -1,9 +1,10 @@
 package br.pucrs.tcc.bilheteria.compartilhado.infra;
 
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.EventoDeIntegracao;
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.PublicadorDeEventos;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.EventoDeIntegracao;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.PublicadorDeEventos;
 
 // Adaptador do monólito: entrega síncrona, dentro da transação de quem publica
 @Component
@@ -17,6 +18,6 @@ class PublicadorDeEventosSpring implements PublicadorDeEventos {
 
     @Override
     public void publicar(EventoDeIntegracao evento) {
-        publicador.publisherEvent(evento);
+        publicador.publishEvent(evento);
     }
 }
