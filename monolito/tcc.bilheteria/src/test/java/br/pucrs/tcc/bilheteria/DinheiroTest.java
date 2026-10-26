@@ -1,10 +1,12 @@
-package br.pucrs.tcc.bilheteria.compartilhado.kernel;
+package br.pucrs.tcc.bilheteria;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import org.junit.jupiter.api.Test;
+
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.Dinheiro;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.RegraDeNegocioException;
 
 class DinheiroTest {
 

@@ -1,12 +1,15 @@
-package br.pucrs.tcc.bilheteria.compartilhado.kernel;
+package br.pucrs.tcc.bilheteria;
+
+import java.time.Duration;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import java.time.Duration;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
+
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.Periodo;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.RegraDeNegocioException;
 
 class PeriodoTest {
 
