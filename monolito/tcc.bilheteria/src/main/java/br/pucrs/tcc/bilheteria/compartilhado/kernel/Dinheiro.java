@@ -31,7 +31,7 @@ public record Dinheiro(long centavos) implements Comparable<Dinheiro> {
 
     public Dinheiro multiplicar(int quantidade) {
         if (quantidade < 0) {
-            throw new RegraDeNegocioException("dinheiro.quantidade-negativa", "A quantidade não pode ser negativa")
+            throw new RegraDeNegocioException("dinheiro.quantidade-negativa", "A quantidade não pode ser negativa");
         }
         return new Dinheiro(Math.multiplyExact(centavos, (long) quantidade));
     }
