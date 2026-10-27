@@ -4,6 +4,6 @@ package br.pucrs.tcc.bilheteria.compartilhado.kernel;
 public class NaoEncontradoException extends ExcecaoDeDominio{
     
     public NaoEncontradoException(String codigo, String mensagem) {
-        super (codigo, mensagem)
+        super (codigo, mensagem);
     }
 }
