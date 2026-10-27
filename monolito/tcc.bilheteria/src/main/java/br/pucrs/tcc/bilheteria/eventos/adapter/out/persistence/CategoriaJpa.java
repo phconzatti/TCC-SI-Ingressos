@@ -1,15 +1,15 @@
 package br.pucrs.tcc.bilheteria.eventos.adapter.out.persistence;
 
+import java.time.Instant;
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.Instant;
-import java.util.UUID;
-
 @Entity
-@Table(name = "categria", schema = "eventos")
+@Table(name = "categoria", schema = "eventos")
 class CategoriaJpa {
     
     @Id

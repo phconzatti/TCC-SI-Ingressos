@@ -60,6 +60,6 @@ class RepositorioDeEventosJpa implements RepositorioDeEventos {
         List<Categoria> categorias = e.categorias.stream()
             .map(c -> new Categoria(c.id, c.nome, Dinheiro.deCentavos(c.precoCentavos), c.capacidade, Periodo.de(c.inicioVendas, c.fimVendas)))
             .toList(); 
-        return Evento.reconstituir(e.id, e.nome, e.local, e.dataDoEvento, e.capacidade, e.status, categorias);
+        return Evento.reconstruir(e.id, e.nome, e.local, e.dataDoEvento, e.capacidade, e.status, categorias);
     }
 }
