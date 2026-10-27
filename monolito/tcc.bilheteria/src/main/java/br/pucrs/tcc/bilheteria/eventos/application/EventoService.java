@@ -35,11 +35,11 @@ public class EventoService {
     }
 
     @Transactional 
-    public Evento adicionarCategoria(UUID eventoId, AdionarCategoria cmd) {
+    public Evento adicionarCategoria(UUID eventoId, AdicionarCategoria cmd) {
         Evento evento = buscarOuFalhar(eventoId);
         evento.adicionarCategoria(cmd.nome(), Dinheiro.deCentavos(cmd.precoEmCentavos()), cmd.capacidade(), Periodo.de(cmd.inicioDasVendas(), cmd.fimDasVendas()));
         repositorio.salvar(evento);
-        return eventos;
+        return evento;
     }
 
     @Transactional
