@@ -20,3 +20,9 @@ management:
 
 server:
   port: 8081
+
+bilheteria:
+  reservas:
+    validade: PT15M
+    intervalo-expiracao: PT30S
+    expiracao-ativa: true
