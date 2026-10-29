@@ -1,1 +1,1 @@
-[{"name":"br.pucrs.tcc.bilheteria.ReservasIntegracaoTest","methods":[{"name":"eventoPublicadoComCategoria","signature":"eventoPublicadoComCategoria(int)","comment":"Cria e publica um evento com uma categoria; devolve [eventoId, categoriaId]."}]},{"name":"br.pucrs.tcc.bilheteria.ReservasIntegracaoTest$Mutavel","comment":"Relógio que o teste avança à mão, para simular a passagem do tempo sem esperar."}]
+[]

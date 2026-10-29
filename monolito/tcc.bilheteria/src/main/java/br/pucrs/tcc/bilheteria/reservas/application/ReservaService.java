@@ -3,6 +3,8 @@ package br.pucrs.tcc.bilheteria.reservas.application;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.EventoPublicado;
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaCriada;
+import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaExpirada;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.Dinheiro;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.Ids;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.NaoEncontradoException;
@@ -56,5 +59,41 @@ public class ReservaService {
         reservas.salvar(reserva);
         publicador.publicar(new ReservaCriada(Ids.novo(), agora, reserva.id(), reserva.usuarioId(), reserva.eventoId(), reserva.valorTotal().centavos(), reserva.expiraEm()));
         return reserva;
+    }
+
+    // Expira uma reserva vencida. Cada chamada é uma transação própria. 
+    @Transactional
+    public boolean expirar(UUID reservaId) {
+        Reserva reserva = reservas.buscarParaAtualizacao(reservaId).orElse(null);
+        if (reserva == null) {
+            return false;
+        }
+        Disponibilidade disponibilidade = disponibilidades.buscarParaAtualizacao(reserva.categoriaId())
+            .orElseThrow(() -> new IllegalStateException(
+                "Reserva sem disponibilidade: " + reserva.categoriaId()
+            ));
+        Instant agora = relogio.instant();
+        if (!reserva.expirar(agora, disponibilidade)) {
+            return false;
+        }        
+        disponibilidades.salvar(disponibilidade);
+        reservas.salvar(reserva);
+        publicador.publicar(new ReservaExpirada(Ids.novo(), agora, reserva.id()));
+        return true;
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> reservasVencidas() {
+        return reservas.idsVencidas(relogio.instant(), LOTE_DE_EXPIRACAO);
+    }
+
+    @Transactional(readOnly = true)
+    public Reserva buscar(UUID id) {
+        return reservas.buscar(id).orElseThrow(() -> new NaoEncontradoException("reserva.nao-encontrada", "Reserva não encontrada: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Disponibilidade> disponibilidadesDoEvento(UUID eventoId) {
+        return disponibilidades.listarPorEvento(eventoId);
     }
 }
