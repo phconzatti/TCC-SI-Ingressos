@@ -26,3 +26,6 @@ bilheteria:
     validade: PT15M
     intervalo-expiracao: PT30S
     expiracao-ativa: true
+  pagamentos:
+    gateway:
+      latencia: PTOS
