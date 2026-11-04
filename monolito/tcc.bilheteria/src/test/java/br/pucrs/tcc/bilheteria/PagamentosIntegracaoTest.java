@@ -1,25 +1,5 @@
 package br.pucrs.tcc.bilheteria;
 
-import br.pucrs.tcc.bilheteria.eventos.application.AdicionarCategoria;
-import br.pucrs.tcc.bilheteria.eventos.application.CriarEvento;
-import br.pucrs.tcc.bilheteria.eventos.application.EventoService;
-import br.pucrs.tcc.bilheteria.eventos.domain.Evento;
-import br.pucrs.tcc.bilheteria.pagamentos.application.PagamentoService;
-import br.pucrs.tcc.bilheteria.pagamentos.application.PagarReserva;
-import br.pucrs.tcc.bilheteria.pagamentos.application.ResultadoDoPagamento;
-import br.pucrs.tcc.bilheteria.pagamentos.domain.StatusPagamento;
-import br.pucrs.tcc.bilheteria.reservas.application.ReservaService;
-import br.pucrs.tcc.bilheteria.reservas.application.ReservarIngressos;
-import br.pucrs.tcc.bilheteria.reservas.domain.Reserva;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -35,6 +15,28 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+import br.pucrs.tcc.bilheteria.eventos.application.AdicionarCategoria;
+import br.pucrs.tcc.bilheteria.eventos.application.CriarEvento;
+import br.pucrs.tcc.bilheteria.eventos.application.EventoService;
+import br.pucrs.tcc.bilheteria.eventos.domain.Evento;
+import br.pucrs.tcc.bilheteria.pagamentos.application.PagamentoService;
+import br.pucrs.tcc.bilheteria.pagamentos.application.PagarReserva;
+import br.pucrs.tcc.bilheteria.pagamentos.application.ResultadoDoPagamento;
+import br.pucrs.tcc.bilheteria.pagamentos.domain.StatusPagamento;
+import br.pucrs.tcc.bilheteria.reservas.application.ReservaService;
+import br.pucrs.tcc.bilheteria.reservas.application.ReservarIngressos;
+import br.pucrs.tcc.bilheteria.reservas.domain.Reserva;
+import br.pucrs.tcc.bilheteria.reservas.domain.StatusReserva;
 
 @Import({TestcontainersConfiguration.class, PagamentosIntegracaoTest.RelogioControlavel.class})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -63,6 +65,7 @@ class PagamentosIntegracaoTest {
     @Autowired ReservaService reservas;
     @Autowired PagamentoService pagamentos;
     @Autowired Mutavel relogio;
+    @Autowired JdbcTemplate jdbc;
 
     @Value("${local.server.port}")
     int porta;
@@ -126,21 +129,6 @@ class PagamentosIntegracaoTest {
                 .hasFieldOrPropertyWithValue("codigo", "reserva.expirada");
     }
 
-    @Test
-    void reservaExpiradaEstornaOPagamentoAprovado() {
-        Reserva reserva = novaReserva(1);
-        Pagamento_ pago = new Pagamento_(pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok")));
-
-        relogio.avancar(Duration.ofMinutes(16));
-        assertThat(reservas.expirar(reserva.id())).isTrue();
-
-        assertThat(pagamentos.buscar(pago.id()).status()).isEqualTo(StatusPagamento.ESTORNADO);
-    }
-
-    private record Pagamento_(ResultadoDoPagamento resultado) {
-        UUID id() { return resultado.pagamento().id(); }
-    }
-
     private HttpResponse<String> postarPagamento(String chaveHeader, UUID reservaId, String token) throws Exception {
         HttpRequest.Builder req = HttpRequest.newBuilder(URI.create("http://localhost:" + porta + "/pagamentos"))
                 .header("Content-Type", "application/json")
@@ -171,5 +159,50 @@ class PagamentosIntegracaoTest {
 
         HttpResponse<String> semHeader = postarPagamento(null, reserva.id(), "tok-ok");
         assertThat(semHeader.statusCode()).isEqualTo(400);
+    }
+
+        @Test
+    void pagamentoAprovadoConfirmaAReserva() {
+        Reserva reserva = novaReserva(2);
+
+        pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok"));
+
+        assertThat(reservas.buscar(reserva.id()).status()).isEqualTo(StatusReserva.CONFIRMADA);
+    }
+
+    @Test
+    void pagamentoRecusadoNaoConfirmaAReserva() {
+        Reserva reserva = novaReserva(1);
+
+        pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "cartao-recusado"));
+
+        assertThat(reservas.buscar(reserva.id()).status()).isEqualTo(StatusReserva.AGUARDANDO_PAGAMENTO);
+    }
+
+    @Test
+    void reservaPagaNaoExpiraENaoEhEstornada() {
+        Reserva reserva = novaReserva(1);
+        UUID pagamentoId = pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok"))
+                .pagamento().id();
+
+        relogio.avancar(Duration.ofMinutes(16));
+
+        assertThat(reservas.reservasVencidas()).doesNotContain(reserva.id());
+        assertThat(reservas.expirar(reserva.id())).isFalse();
+        assertThat(reservas.buscar(reserva.id()).status()).isEqualTo(StatusReserva.CONFIRMADA);
+        assertThat(pagamentos.buscar(pagamentoId).status()).isEqualTo(StatusPagamento.APROVADO);
+    }
+
+    @Test
+    void seAReservaJaExpirouNaConfirmacaoOPagamentoEhDesfeito() {
+        Reserva reserva = novaReserva(1);
+        jdbc.update("update reservas.reserva set status = 'EXPIRADA' where id = ?", reserva.id());
+
+        assertThatThrownBy(() -> pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok")))
+                .hasFieldOrPropertyWithValue("codigo", "reserva.expirada");
+
+        Integer gravados = jdbc.queryForObject(
+                "select count(*) from pagamentos.pagamento where reserva_id = ?", Integer.class, reserva.id());
+        assertThat(gravados).as("pagamentos gravados").isZero();
     }
 }

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.EventoPublicado;
+import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaConfirmada;
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaCriada;
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaExpirada;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.Dinheiro;
@@ -20,6 +21,7 @@ import br.pucrs.tcc.bilheteria.compartilhado.kernel.Periodo;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.PublicadorDeEventos;
 import br.pucrs.tcc.bilheteria.reservas.domain.Disponibilidade;
 import br.pucrs.tcc.bilheteria.reservas.domain.Reserva;
+import br.pucrs.tcc.bilheteria.reservas.domain.StatusReserva;
 
 @Service
 public class ReservaService {
@@ -51,8 +53,7 @@ public class ReservaService {
 
     @Transactional
     public Reserva reservar(ReservarIngressos cmd) {
-        Disponibilidade disponibilidade = disponibilidades.buscarParaAtualizacao(cmd.categoriaId())
-            .orElseThrow(() -> new NaoEncontradoException("disponibilidade.nao-encontrada", "Categoria não encontrada ou evento não publicado: " + cmd.categoriaId()));
+        Disponibilidade disponibilidade = disponibilidades.buscarParaAtualizacao(cmd.categoriaId()).orElseThrow(() -> new NaoEncontradoException("disponibilidade.nao-encontrada", "Categoria não encontrada ou evento não publicado: " + cmd.categoriaId()));
         Instant agora = relogio.instant();
         Reserva reserva = Reserva.criar(cmd.usuarioId(), disponibilidade, cmd.quantidade(), agora, validade);
         disponibilidades.salvar(disponibilidade);
@@ -68,9 +69,7 @@ public class ReservaService {
         if (reserva == null) {
             return false;
         }
-        Disponibilidade disponibilidade = disponibilidades.buscarParaAtualizacao(reserva.categoriaId())
-            .orElseThrow(() -> new IllegalStateException(
-                "Reserva sem disponibilidade: " + reserva.categoriaId()
+        Disponibilidade disponibilidade = disponibilidades.buscarParaAtualizacao(reserva.categoriaId()).orElseThrow(() -> new IllegalStateException("Reserva sem disponibilidade: " + reserva.categoriaId()
             ));
         Instant agora = relogio.instant();
         if (!reserva.expirar(agora, disponibilidade)) {
@@ -80,6 +79,20 @@ public class ReservaService {
         reservas.salvar(reserva);
         publicador.publicar(new ReservaExpirada(Ids.novo(), agora, reserva.id()));
         return true;
+    }
+
+    @Transactional
+    public Reserva confirmar(UUID reservaId) {
+        Reserva reserva = reservas.buscarParaAtualizacao(reservaId).orElseThrow(() -> new NaoEncontradoException("reserva.nao-encontrada", "Reserva não encontrada: " + reservaId));
+        boolean jaConfirmada = reserva.status() == StatusReserva.CONFIRMADA;
+        Instant agora = relogio.instant();
+        reserva.confirmar(agora);
+        if (jaConfirmada) {
+            return reserva;
+        }
+        reservas.salvar(reserva);
+        publicador.publicar(new ReservaConfirmada(Ids.novo(), agora, reserva.id(), reserva.usuarioId(), reserva.eventoId(), reserva.categoriaId(), reserva.quantidade()));
+        return reserva;
     }
 
     @Transactional(readOnly = true)
