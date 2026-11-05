@@ -1,15 +1,18 @@
 package br.pucrs.tcc.bilheteria;
 
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.Dinheiro;
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.Periodo;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
+
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.Dinheiro;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.Periodo;
+import br.pucrs.tcc.bilheteria.reservas.domain.Disponibilidade;
+import br.pucrs.tcc.bilheteria.reservas.domain.Reserva;
+import br.pucrs.tcc.bilheteria.reservas.domain.StatusReserva;
 
 class ReservaTest {
 

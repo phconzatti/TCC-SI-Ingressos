@@ -1,5 +1,15 @@
 package br.pucrs.tcc.bilheteria.reservas.adapter.in;
 
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import br.pucrs.tcc.bilheteria.reservas.application.ReservaService;
+
 @Component
 @ConditionalOnProperty(name = "bilheteria.reservas.expiracao-ativa", havingValue = "true", matchIfMissing = true)
 class ExpiracaoDeReservasJob {

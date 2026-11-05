@@ -1,23 +1,5 @@
 package br.pucrs.tcc.bilheteria;
 
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.ConflitoException;
-import br.pucrs.tcc.bilheteria.eventos.application.AdicionarCategoria;
-import br.pucrs.tcc.bilheteria.eventos.application.CriarEvento;
-import br.pucrs.tcc.bilheteria.eventos.application.EventoService;
-import br.pucrs.tcc.bilheteria.eventos.domain.Evento;
-import br.pucrs.tcc.bilheteria.reservas.application.ReservaService;
-import br.pucrs.tcc.bilheteria.reservas.application.ReservarIngressos;
-import br.pucrs.tcc.bilheteria.reservas.domain.Disponibilidade;
-import br.pucrs.tcc.bilheteria.reservas.domain.Reserva;
-import br.pucrs.tcc.bilheteria.reservas.domain.StatusReserva;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
-
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -34,6 +16,24 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.ConflitoException;
+import br.pucrs.tcc.bilheteria.eventos.application.AdicionarCategoria;
+import br.pucrs.tcc.bilheteria.eventos.application.CriarEvento;
+import br.pucrs.tcc.bilheteria.eventos.application.EventoService;
+import br.pucrs.tcc.bilheteria.eventos.domain.Evento;
+import br.pucrs.tcc.bilheteria.reservas.application.ReservaService;
+import br.pucrs.tcc.bilheteria.reservas.application.ReservarIngressos;
+import br.pucrs.tcc.bilheteria.reservas.domain.Disponibilidade;
+import br.pucrs.tcc.bilheteria.reservas.domain.Reserva;
+import br.pucrs.tcc.bilheteria.reservas.domain.StatusReserva;
 
 @Import({TestcontainersConfiguration.class, ReservasIntegracaoTest.RelogioControlavel.class})
 @SpringBootTest(properties = "bilheteria.reservas.expiracao-ativa=false")
@@ -141,6 +141,4 @@ class ReservasIntegracaoTest {
         assertThat(disponibilidade(ids[0]).reservados()).isZero();
         assertThat(reservas.expirar(r.id())).as("segunda vez é no-op").isFalse();
     }
-} {
-    
-}
+} 
