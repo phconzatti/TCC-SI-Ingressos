@@ -47,8 +47,7 @@ public class PagamentoService {
         Optional<Pagamento> existente = pagamentos.buscarPorChave(cmd.chaveDeIdempotencia());
         if (existente.isPresent()) {
             if (!existente.get().reservaId().equals(cmd.reservaId())) {
-                throw new ConflitoException("idempotencia.chave-reutilizada",
-                        "Esta chave de idempotência já foi usada para outra reserva");
+                throw new ConflitoException("idempotencia.chave-reutilizada", "Esta chave de idempotência já foi usada para outra reserva");
             }
             return new ResultadoDoPagamento(existente.get(), false);
         }

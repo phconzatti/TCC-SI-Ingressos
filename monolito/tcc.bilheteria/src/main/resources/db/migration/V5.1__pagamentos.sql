@@ -1,0 +1,1 @@
+ALTER TABLE pagamentos.reserva_ref ADD usuario_id UUID NOT NULL;

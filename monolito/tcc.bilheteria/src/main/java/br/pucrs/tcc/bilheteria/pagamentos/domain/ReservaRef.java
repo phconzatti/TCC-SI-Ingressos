@@ -32,8 +32,7 @@ public class ReservaRef {
         return new ReservaRef(id, usuarioId, eventoId, valor, expiraEm, false);
     }
 
-    public static ReservaRef reconstituir(UUID id, UUID usuarioId, UUID eventoId, Dinheiro valor,
-                                          Instant expiraEm, boolean expirada) {
+    public static ReservaRef reconstituir(UUID id, UUID usuarioId, UUID eventoId, Dinheiro valor, Instant expiraEm, boolean expirada) {
         return new ReservaRef(id, usuarioId, eventoId, valor, expiraEm, expirada);
     }
 

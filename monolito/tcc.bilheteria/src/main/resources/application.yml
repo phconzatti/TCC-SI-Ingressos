@@ -28,4 +28,4 @@ bilheteria:
     expiracao-ativa: true
   pagamentos:
     gateway:
-      latencia: PTOS
+      latencia: PT0S
