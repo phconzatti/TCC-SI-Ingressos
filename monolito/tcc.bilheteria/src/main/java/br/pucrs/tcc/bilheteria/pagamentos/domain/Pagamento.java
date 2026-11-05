@@ -1,6 +1,7 @@
 package br.pucrs.tcc.bilheteria.pagamentos.domain;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.ConflitoException;
@@ -42,7 +43,8 @@ public class Pagamento {
         if (!reserva.aceitaPagamento(agora)) {
             throw new ConflitoException("reserva.expirada", "O prazo para pagar esta reserva já venceu");
         }
-        return new Pagamento(Ids.novo(), reserva.id(), chaveDeIdempotencia, reserva.valor(), agora, StatusPagamento.INICIADO, null, null);
+        Instant agoraTruncado = agora.truncatedTo(ChronoUnit.MICROS);
+        return new Pagamento(Ids.novo(), reserva.id(), chaveDeIdempotencia, reserva.valor(), agoraTruncado, StatusPagamento.INICIADO, null, null);
     }
 
 
