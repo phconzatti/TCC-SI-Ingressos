@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.PagamentoAprovado;
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaCriada;
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaExpirada;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.AcessoNegadoException;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.ConflitoException;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.Dinheiro;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.Ids;

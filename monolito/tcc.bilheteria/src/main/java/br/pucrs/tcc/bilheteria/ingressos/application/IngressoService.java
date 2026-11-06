@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaConfirmada;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.AcessoNegadoException;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.NaoEncontradoException;
 import br.pucrs.tcc.bilheteria.ingressos.domain.Ingresso;
 
