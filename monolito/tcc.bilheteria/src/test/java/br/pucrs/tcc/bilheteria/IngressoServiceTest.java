@@ -113,4 +113,19 @@ class IngressoServiceTest {
         assertThatThrownBy(() -> service.buscarPorCodigo("nao-existe"))
                 .hasFieldOrPropertyWithValue("codigo", "ingresso.nao-encontrado");
     }
+
+        @Test
+    void donoVeSeusIngressosEOutroUsuarioRecebeAcessoNegado() {
+        UUID reserva = UUID.randomUUID();
+        ReservaConfirmada evento = confirmada(reserva, 2);
+        service.emitirIngressos(evento);
+        String codigo = service.listarPorReserva(reserva).get(0).codigo();
+
+        assertThat(service.listarDoUsuario(reserva, evento.usuarioId())).hasSize(2);
+        assertThat(service.buscarDoUsuario(codigo, evento.usuarioId()).codigo()).isEqualTo(codigo);
+        assertThatThrownBy(() -> service.listarDoUsuario(reserva, UUID.randomUUID()))
+                .hasFieldOrPropertyWithValue("codigo", "ingresso.de-outro-usuario");
+        assertThatThrownBy(() -> service.buscarDoUsuario(codigo, UUID.randomUUID()))
+                .hasFieldOrPropertyWithValue("codigo", "ingresso.de-outro-usuario");
+    }
 }

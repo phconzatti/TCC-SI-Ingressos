@@ -1,12 +1,15 @@
 package br.pucrs.tcc.bilheteria.pagamentos.application;
 
-import java.util.UUID;
-
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.RegraDeNegocioException;
 
-public record PagarReserva(UUID reservaId, String chaveDeIdempotencia, String tokenDePagamento) {
+import java.util.UUID;
+
+public record PagarReserva(UUID usuarioId, UUID reservaId, String chaveDeIdempotencia, String tokenDePagamento) {
 
     public PagarReserva {
+        if (usuarioId == null) {
+            throw new RegraDeNegocioException("pagamento.usuario-obrigatorio", "usuarioId é obrigatório");
+        }
         if (reservaId == null) {
             throw new RegraDeNegocioException("pagamento.reserva-obrigatoria", "reservaId é obrigatório");
         }

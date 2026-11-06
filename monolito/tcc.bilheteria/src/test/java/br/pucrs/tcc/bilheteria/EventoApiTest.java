@@ -1,7 +1,11 @@
 package br.pucrs.tcc.bilheteria;
 
 import br.pucrs.tcc.bilheteria.TestcontainersConfiguration;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.Papel;
+import br.pucrs.tcc.bilheteria.usuarios.application.EmissorDeToken;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -14,6 +18,7 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,11 +29,14 @@ class EventoApiTest {
     @Value("${local.server.port}")
     int porta;
 
+    @Autowired EmissorDeToken emissor;
+
     private final HttpClient http = HttpClient.newHttpClient();
 
     private HttpResponse<String> post(String caminho, String json) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" + porta + caminho))
+                HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:" + porta + caminho))
                 .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + emissor.emitir(UUID.randomUUID(), Papel.ORGANIZADOR).valor())
                 .POST(BodyPublishers.ofString(json))
                 .build();
         return http.send(req, BodyHandlers.ofString());

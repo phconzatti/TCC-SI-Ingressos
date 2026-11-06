@@ -193,4 +193,15 @@ class ReservaServiceTest {
         assertThatThrownBy(() -> service.confirmar(UUID.randomUUID()))
                 .hasFieldOrPropertyWithValue("codigo", "reserva.nao-encontrada");
     }
+
+        @Test
+    void soODonoConsultaAReserva() {
+        UUID categoria = categoriaPublicada(10);
+        UUID dono = UUID.randomUUID();
+        Reserva r = service.reservar(new ReservarIngressos(dono, categoria, 1));
+
+        assertThat(service.buscarDoUsuario(r.id(), dono).id()).isEqualTo(r.id());
+        assertThatThrownBy(() -> service.buscarDoUsuario(r.id(), UUID.randomUUID()))
+                .hasFieldOrPropertyWithValue("codigo", "reserva.de-outro-usuario");
+    }
 }

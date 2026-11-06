@@ -1,40 +1,43 @@
 package br.pucrs.tcc.bilheteria.compartilhado.infra.web;
 
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.ConflitoException;
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.ExcecaoDeDominio;
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.NaoEncontradoException;
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.RegraDeNegocioException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.AcessoNegadoException;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.ConflitoException;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.ExcecaoDeDominio;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.NaoAutenticadoException;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.NaoEncontradoException;
 
-
-// Converte exceções de negócio em respostas padronizadas
 @RestControllerAdvice
-class TratadorDeErros extends ResponseEntityExceptionHandler {
-    
-    @ExceptionHandler(RegraDeNegocioException.class)
-    ProblemDetail regraDeNegocio(RegraDeNegocioException e) {
-        return problema(422, "Regra de negócio violada", e);
-    }
+public class TratadorDeErros extends ResponseEntityExceptionHandler {
 
-    @ExceptionHandler(ConflitoException.class)
-    ProblemDetail conflito(ConflitoException e) {
-        return problema(409, "Conflito", e);
-    }
-
-    @ExceptionHandler(NaoEncontradoException.class)
-    ProblemDetail naoEncontrado(NaoEncontradoException e) {
-        return problema(404, "Não encontrado", e);
-    }
-
-    private static ProblemDetail problema(int status, String titulo, ExcecaoDeDominio e) {
+    @ExceptionHandler(ExcecaoDeDominio.class)
+    ProblemDetail aoViolarRegra(ExcecaoDeDominio e) {
+        int status = statusDe(e);
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(status), e.getMessage());
-        problema.setTitle(titulo);
+        problema.setTitle(HttpStatus.valueOf(status).getReasonPhrase());
         problema.setProperty("codigo", e.codigo());
         return problema;
+    }
+
+    private static int statusDe(ExcecaoDeDominio e) {
+        if (e instanceof NaoEncontradoException) {
+            return 404;
+        }
+        if (e instanceof ConflitoException) {
+            return 409;
+        }
+        if (e instanceof NaoAutenticadoException) {
+            return 401;
+        }
+        if (e instanceof AcessoNegadoException) {
+            return 403;
+        }
+        return 422; // RegraDeNegocioException
     }
 }

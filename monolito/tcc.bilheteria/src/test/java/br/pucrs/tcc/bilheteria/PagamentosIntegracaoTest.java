@@ -25,6 +25,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.Papel;
 import br.pucrs.tcc.bilheteria.eventos.application.AdicionarCategoria;
 import br.pucrs.tcc.bilheteria.eventos.application.CriarEvento;
 import br.pucrs.tcc.bilheteria.eventos.application.EventoService;
@@ -37,6 +38,7 @@ import br.pucrs.tcc.bilheteria.reservas.application.ReservaService;
 import br.pucrs.tcc.bilheteria.reservas.application.ReservarIngressos;
 import br.pucrs.tcc.bilheteria.reservas.domain.Reserva;
 import br.pucrs.tcc.bilheteria.reservas.domain.StatusReserva;
+import br.pucrs.tcc.bilheteria.usuarios.application.EmissorDeToken;
 
 @Import({TestcontainersConfiguration.class, PagamentosIntegracaoTest.RelogioControlavel.class})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -66,6 +68,7 @@ class PagamentosIntegracaoTest {
     @Autowired PagamentoService pagamentos;
     @Autowired Mutavel relogio;
     @Autowired JdbcTemplate jdbc;
+    @Autowired EmissorDeToken emissor;
 
     @Value("${local.server.port}")
     int porta;
@@ -90,7 +93,7 @@ class PagamentosIntegracaoTest {
     void reservaCriadaPodeSerPagaComOValorDaReserva() {
         Reserva reserva = novaReserva(2);
 
-        ResultadoDoPagamento r = pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok"));
+        ResultadoDoPagamento r = pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  chave(), "tok-ok"));
 
         assertThat(r.novo()).isTrue();
         assertThat(r.pagamento().status()).isEqualTo(StatusPagamento.APROVADO);
@@ -102,8 +105,8 @@ class PagamentosIntegracaoTest {
         Reserva reserva = novaReserva(1);
         String k = chave();
 
-        ResultadoDoPagamento primeiro = pagamentos.pagar(new PagarReserva(reserva.id(), k, "tok-ok"));
-        ResultadoDoPagamento repeticao = pagamentos.pagar(new PagarReserva(reserva.id(), k, "tok-ok"));
+        ResultadoDoPagamento primeiro = pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  k, "tok-ok"));
+        ResultadoDoPagamento repeticao = pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  k, "tok-ok"));
 
         assertThat(repeticao.novo()).isFalse();
         assertThat(repeticao.pagamento().id()).isEqualTo(primeiro.pagamento().id());
@@ -113,10 +116,10 @@ class PagamentosIntegracaoTest {
     void pagamentoRecusadoPermiteNovaTentativaComOutraChave() {
         Reserva reserva = novaReserva(1);
 
-        ResultadoDoPagamento recusado = pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "cartao-recusado"));
+        ResultadoDoPagamento recusado = pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  chave(), "cartao-recusado"));
         assertThat(recusado.pagamento().status()).isEqualTo(StatusPagamento.RECUSADO);
 
-        ResultadoDoPagamento aprovado = pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok"));
+        ResultadoDoPagamento aprovado = pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  chave(), "tok-ok"));
         assertThat(aprovado.pagamento().status()).isEqualTo(StatusPagamento.APROVADO);
     }
 
@@ -125,15 +128,17 @@ class PagamentosIntegracaoTest {
         Reserva reserva = novaReserva(1);
         relogio.avancar(Duration.ofMinutes(16));
 
-        assertThatThrownBy(() -> pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok")))
+        assertThatThrownBy(() -> pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  chave(), "tok-ok")))
                 .hasFieldOrPropertyWithValue("codigo", "reserva.expirada");
     }
 
-    private HttpResponse<String> postarPagamento(String chaveHeader, UUID reservaId, String token) throws Exception {
+    private HttpResponse<String> postarPagamento(String chaveHeader, Reserva reserva, String token) throws Exception {
+        String jwt = emissor.emitir(reserva.usuarioId(), Papel.CLIENTE).valor();
         HttpRequest.Builder req = HttpRequest.newBuilder(URI.create("http://localhost:" + porta + "/pagamentos"))
                 .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + jwt)
                 .POST(BodyPublishers.ofString("""
-                        {"reservaId":"%s","tokenDePagamento":"%s"}""".formatted(reservaId, token)));
+                        {"reservaId":"%s","tokenDePagamento":"%s"}""".formatted(reserva.id(), token)));
         if (chaveHeader != null) {
             req.header("Idempotency-Key", chaveHeader);
         }
@@ -145,19 +150,19 @@ class PagamentosIntegracaoTest {
         Reserva reserva = novaReserva(1);
         String k = chave();
 
-        HttpResponse<String> primeira = postarPagamento(k, reserva.id(), "tok-ok");
+        HttpResponse<String> primeira = postarPagamento(k, reserva, "tok-ok");
         assertThat(primeira.statusCode()).isEqualTo(201);
         assertThat(primeira.body()).contains("APROVADO");
 
-        HttpResponse<String> repeticao = postarPagamento(k, reserva.id(), "tok-ok");
+        HttpResponse<String> repeticao = postarPagamento(k, reserva, "tok-ok");
         assertThat(repeticao.statusCode()).isEqualTo(200);
         assertThat(repeticao.body()).isEqualTo(primeira.body());
 
-        HttpResponse<String> outraChave = postarPagamento(chave(), reserva.id(), "tok-ok");
+        HttpResponse<String> outraChave = postarPagamento(chave(), reserva, "tok-ok");
         assertThat(outraChave.statusCode()).isEqualTo(409);
         assertThat(outraChave.body()).contains("pagamento.ja-existe");
 
-        HttpResponse<String> semHeader = postarPagamento(null, reserva.id(), "tok-ok");
+        HttpResponse<String> semHeader = postarPagamento(null, reserva, "tok-ok");
         assertThat(semHeader.statusCode()).isEqualTo(400);
     }
 
@@ -165,7 +170,7 @@ class PagamentosIntegracaoTest {
     void pagamentoAprovadoConfirmaAReserva() {
         Reserva reserva = novaReserva(2);
 
-        pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok"));
+        pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  chave(), "tok-ok"));
 
         assertThat(reservas.buscar(reserva.id()).status()).isEqualTo(StatusReserva.CONFIRMADA);
     }
@@ -174,7 +179,7 @@ class PagamentosIntegracaoTest {
     void pagamentoRecusadoNaoConfirmaAReserva() {
         Reserva reserva = novaReserva(1);
 
-        pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "cartao-recusado"));
+        pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  chave(), "cartao-recusado"));
 
         assertThat(reservas.buscar(reserva.id()).status()).isEqualTo(StatusReserva.AGUARDANDO_PAGAMENTO);
     }
@@ -182,7 +187,7 @@ class PagamentosIntegracaoTest {
     @Test
     void reservaPagaNaoExpiraENaoEhEstornada() {
         Reserva reserva = novaReserva(1);
-        UUID pagamentoId = pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok"))
+        UUID pagamentoId = pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  chave(), "tok-ok"))
                 .pagamento().id();
 
         relogio.avancar(Duration.ofMinutes(16));
@@ -198,7 +203,7 @@ class PagamentosIntegracaoTest {
         Reserva reserva = novaReserva(1);
         jdbc.update("update reservas.reserva set status = 'EXPIRADA' where id = ?", reserva.id());
 
-        assertThatThrownBy(() -> pagamentos.pagar(new PagarReserva(reserva.id(), chave(), "tok-ok")))
+        assertThatThrownBy(() -> pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  chave(), "tok-ok")))
                 .hasFieldOrPropertyWithValue("codigo", "reserva.expirada");
 
         Integer gravados = jdbc.queryForObject(

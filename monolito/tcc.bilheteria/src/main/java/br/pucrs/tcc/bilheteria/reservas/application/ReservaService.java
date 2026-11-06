@@ -14,6 +14,7 @@ import br.pucrs.tcc.bilheteria.compartilhado.contratos.EventoPublicado;
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaConfirmada;
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaCriada;
 import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaExpirada;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.AcessoNegadoException;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.Dinheiro;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.Ids;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.NaoEncontradoException;
@@ -103,6 +104,15 @@ public class ReservaService {
     @Transactional(readOnly = true)
     public Reserva buscar(UUID id) {
         return reservas.buscar(id).orElseThrow(() -> new NaoEncontradoException("reserva.nao-encontrada", "Reserva não encontrada: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public Reserva buscarDoUsuario(UUID id, UUID usuarioId) {
+        Reserva reserva = buscar(id);
+        if (!reserva.usuarioId().equals(usuarioId)) {
+            throw new AcessoNegadoException("reserva.de-outro-usuario", "Esta reserva pertence a outro usuário");
+        }
+        return reserva;
     }
 
     @Transactional(readOnly = true)

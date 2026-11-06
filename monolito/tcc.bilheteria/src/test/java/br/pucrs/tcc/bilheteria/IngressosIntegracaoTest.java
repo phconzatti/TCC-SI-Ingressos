@@ -27,6 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.ConflitoException;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.Papel;
 import br.pucrs.tcc.bilheteria.eventos.application.AdicionarCategoria;
 import br.pucrs.tcc.bilheteria.eventos.application.CriarEvento;
 import br.pucrs.tcc.bilheteria.eventos.application.EventoService;
@@ -39,6 +40,7 @@ import br.pucrs.tcc.bilheteria.pagamentos.application.PagarReserva;
 import br.pucrs.tcc.bilheteria.reservas.application.ReservaService;
 import br.pucrs.tcc.bilheteria.reservas.application.ReservarIngressos;
 import br.pucrs.tcc.bilheteria.reservas.domain.Reserva;
+import br.pucrs.tcc.bilheteria.usuarios.application.EmissorDeToken;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -53,6 +55,7 @@ class IngressosIntegracaoTest {
     @Autowired PagamentoService pagamentos;
     @Autowired IngressoService ingressos;
     @Autowired Clock relogio;
+    @Autowired EmissorDeToken emissor;
 
     @Value("${local.server.port}")
     int porta;
@@ -70,7 +73,7 @@ class IngressosIntegracaoTest {
     }
 
     private void pagar(Reserva reserva, String token) {
-        pagamentos.pagar(new PagarReserva(reserva.id(), UUID.randomUUID().toString(), token));
+        pagamentos.pagar(new PagarReserva(reserva.usuarioId(), reserva.id(),  UUID.randomUUID().toString(), token));
     }
 
     @Test
@@ -137,8 +140,9 @@ class IngressosIntegracaoTest {
         assertThat(ingressos.buscarPorCodigo(codigo).status()).isEqualTo(StatusIngresso.UTILIZADO);
     }
 
-    private HttpResponse<String> http(String metodo, String caminho) throws Exception {
-        HttpRequest.Builder req = HttpRequest.newBuilder(URI.create("http://localhost:" + porta + caminho));
+    private HttpResponse<String> http(String metodo, String caminho, String jwt) throws Exception {
+        HttpRequest.Builder req = HttpRequest.newBuilder(URI.create("http://localhost:" + porta + caminho))
+                .header("Authorization", "Bearer " + jwt);
         if (metodo.equals("POST")) {
             req.POST(BodyPublishers.noBody());
         } else {
@@ -152,19 +156,21 @@ class IngressosIntegracaoTest {
         Reserva reserva = novaReserva(2);
         pagar(reserva, "tok-ok");
         String codigo = ingressos.listarPorReserva(reserva.id()).get(0).codigo();
+        String dono = emissor.emitir(reserva.usuarioId(), Papel.CLIENTE).valor();
+        String portaria = emissor.emitir(UUID.randomUUID(), Papel.PORTARIA).valor();
 
-        HttpResponse<String> lista = http("GET", "/ingressos?reservaId=" + reserva.id());
+        HttpResponse<String> lista = http("GET", "/ingressos?reservaId=" + reserva.id(), dono);
         assertThat(lista.statusCode()).isEqualTo(200);
         assertThat(lista.body()).contains(codigo).contains("EMITIDO");
 
-        HttpResponse<String> primeiro = http("POST", "/ingressos/" + codigo + "/check-in");
+        HttpResponse<String> primeiro = http("POST", "/ingressos/" + codigo + "/check-in", portaria);
         assertThat(primeiro.statusCode()).isEqualTo(200);
         assertThat(primeiro.body()).contains("UTILIZADO");
 
-        HttpResponse<String> segundo = http("POST", "/ingressos/" + codigo + "/check-in");
+        HttpResponse<String> segundo = http("POST", "/ingressos/" + codigo + "/check-in", portaria);
         assertThat(segundo.statusCode()).isEqualTo(409);
         assertThat(segundo.body()).contains("ingresso.ja-utilizado");
 
-        assertThat(http("GET", "/ingressos/codigo-que-nao-existe").statusCode()).isEqualTo(404);
+        assertThat(http("GET", "/ingressos/codigo-que-nao-existe", portaria).statusCode()).isEqualTo(404);
     }
 }

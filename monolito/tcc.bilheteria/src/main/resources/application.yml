@@ -28,4 +28,15 @@ bilheteria:
     expiracao-ativa: true
   pagamentos:
     gateway:
-      latencia: PT0S
+      latencia: 
+  seguranca:
+    jwt:
+      segredo: ${JWT_SEGREDO:segredo-de-desenvolvimento-troque-em-producao-0123456789abcdef}
+      validade: PT1H
+  usuarios:
+    iniciais:
+      ativo: true
+      organizador-email: organizador@bilheteria.local
+      organizador-senha: organizador-123
+      portaria-email: portaria@bilheteria.local
+      portaria-sennha: portaria-123

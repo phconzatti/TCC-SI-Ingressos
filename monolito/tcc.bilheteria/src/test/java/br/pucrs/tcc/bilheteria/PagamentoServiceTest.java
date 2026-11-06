@@ -1,15 +1,5 @@
 package br.pucrs.tcc.bilheteria;
 
-import br.pucrs.tcc.bilheteria.compartilhado.contratos.PagamentoAprovado;
-import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaCriada;
-import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaExpirada;
-import br.pucrs.tcc.bilheteria.compartilhado.kernel.EventoDeIntegracao;
-import br.pucrs.tcc.bilheteria.pagamentos.domain.Pagamento;
-import br.pucrs.tcc.bilheteria.pagamentos.domain.ReservaRef;
-import br.pucrs.tcc.bilheteria.pagamentos.domain.StatusPagamento;
-
-import org.junit.jupiter.api.Test;
-
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,13 +14,21 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
+import br.pucrs.tcc.bilheteria.compartilhado.contratos.PagamentoAprovado;
+import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaCriada;
+import br.pucrs.tcc.bilheteria.compartilhado.contratos.ReservaExpirada;
+import br.pucrs.tcc.bilheteria.compartilhado.kernel.EventoDeIntegracao;
 import br.pucrs.tcc.bilheteria.pagamentos.application.GatewayDePagamento;
 import br.pucrs.tcc.bilheteria.pagamentos.application.PagamentoService;
 import br.pucrs.tcc.bilheteria.pagamentos.application.PagarReserva;
 import br.pucrs.tcc.bilheteria.pagamentos.application.RepositorioDePagamentos;
 import br.pucrs.tcc.bilheteria.pagamentos.application.RepositorioDeReservasRef;
 import br.pucrs.tcc.bilheteria.pagamentos.application.ResultadoDoPagamento;
+import br.pucrs.tcc.bilheteria.pagamentos.domain.Pagamento;
+import br.pucrs.tcc.bilheteria.pagamentos.domain.ReservaRef;
+import br.pucrs.tcc.bilheteria.pagamentos.domain.StatusPagamento;
 
 class PagamentoServiceTest {
 
@@ -41,6 +39,8 @@ class PagamentoServiceTest {
     private final List<EventoDeIntegracao> publicados = new ArrayList<>();
     private int cobrancas = 0;
     private Instant agora = T0;
+    private static final UUID USUARIO = UUID.randomUUID();
+    private static final UUID OUTRO_USUARIO = UUID.randomUUID();
 
     private final Clock relogio = new Clock() {
         @Override public ZoneId getZone() { return ZoneOffset.UTC; }
@@ -79,9 +79,9 @@ class PagamentoServiceTest {
     private final PagamentoService service = new PagamentoService(
             repositorioDeRefs, repositorioDePagamentos, gateway, publicados::add, relogio);
 
-    private UUID reservaConhecida(long valorEmCentavos) {
+        private UUID reservaConhecida(long valorEmCentavos) {
         UUID reservaId = UUID.randomUUID();
-        service.registrarReserva(new ReservaCriada(UUID.randomUUID(), T0, reservaId, UUID.randomUUID(),
+        service.registrarReserva(new ReservaCriada(UUID.randomUUID(), T0, reservaId, USUARIO,
                 UUID.randomUUID(), valorEmCentavos, T0.plus(Duration.ofMinutes(15))));
         return reservaId;
     }
@@ -100,7 +100,7 @@ class PagamentoServiceTest {
     void pagaComOValorDaReservaEPublicaPagamentoAprovado() {
         UUID reserva = reservaConhecida(20000);
 
-        ResultadoDoPagamento r = service.pagar(new PagarReserva(reserva, "k1", "tok-ok"));
+        ResultadoDoPagamento r = service.pagar(new PagarReserva(USUARIO, reserva, "k1", "tok-ok"));
 
         assertThat(r.novo()).isTrue();
         assertThat(r.pagamento().status()).isEqualTo(StatusPagamento.APROVADO);
@@ -111,8 +111,8 @@ class PagamentoServiceTest {
     @Test
     void repetirAMesmaChaveNaoCobraDeNovo() {
         UUID reserva = reservaConhecida(20000);
-        ResultadoDoPagamento primeiro = service.pagar(new PagarReserva(reserva, "k1", "tok-ok"));
-        ResultadoDoPagamento repeticao = service.pagar(new PagarReserva(reserva, "k1", "tok-ok"));
+        ResultadoDoPagamento primeiro = service.pagar(new PagarReserva(USUARIO, reserva, "k1", "tok-ok"));
+        ResultadoDoPagamento repeticao = service.pagar(new PagarReserva(USUARIO, reserva, "k1", "tok-ok"));
 
         assertThat(repeticao.novo()).isFalse();
         assertThat(repeticao.pagamento().id()).isEqualTo(primeiro.pagamento().id());
@@ -124,18 +124,18 @@ class PagamentoServiceTest {
     void mesmaChaveEmOutraReservaEhConflito() {
         UUID a = reservaConhecida(1000);
         UUID b = reservaConhecida(1000);
-        service.pagar(new PagarReserva(a, "k1", "tok-ok"));
+        service.pagar(new PagarReserva(USUARIO, a, "k1", "tok-ok"));
 
-        assertThatThrownBy(() -> service.pagar(new PagarReserva(b, "k1", "tok-ok")))
+        assertThatThrownBy(() -> service.pagar(new PagarReserva(USUARIO, b, "k1", "tok-ok")))
                 .hasFieldOrPropertyWithValue("codigo", "idempotencia.chave-reutilizada");
     }
 
     @Test
     void naoPagaDuasVezesAMesmaReservaComChavesDiferentes() {
         UUID reserva = reservaConhecida(1000);
-        service.pagar(new PagarReserva(reserva, "k1", "tok-ok"));
+        service.pagar(new PagarReserva(USUARIO, reserva, "k1", "tok-ok"));
 
-        assertThatThrownBy(() -> service.pagar(new PagarReserva(reserva, "k2", "tok-ok")))
+        assertThatThrownBy(() -> service.pagar(new PagarReserva(USUARIO, reserva, "k2", "tok-ok")))
                 .hasFieldOrPropertyWithValue("codigo", "pagamento.ja-existe");
         assertThat(cobrancas).isEqualTo(1);
     }
@@ -144,18 +144,18 @@ class PagamentoServiceTest {
     void recusadoNaoPublicaEventoEPermiteNovaTentativa() {
         UUID reserva = reservaConhecida(1000);
 
-        ResultadoDoPagamento recusado = service.pagar(new PagarReserva(reserva, "k1", "cartao-recusado"));
+        ResultadoDoPagamento recusado = service.pagar(new PagarReserva(USUARIO, reserva, "k1", "cartao-recusado"));
         assertThat(recusado.pagamento().status()).isEqualTo(StatusPagamento.RECUSADO);
         assertThat(recusado.pagamento().motivo()).isEqualTo("Cartão recusado");
         assertThat(publicados).isEmpty();
 
-        ResultadoDoPagamento novaTentativa = service.pagar(new PagarReserva(reserva, "k2", "tok-ok"));
+        ResultadoDoPagamento novaTentativa = service.pagar(new PagarReserva(USUARIO, reserva, "k2", "tok-ok"));
         assertThat(novaTentativa.pagamento().status()).isEqualTo(StatusPagamento.APROVADO);
     }
 
     @Test
     void reservaDesconhecidaDevolveConflitoDeTentarNovamente() {
-        assertThatThrownBy(() -> service.pagar(new PagarReserva(UUID.randomUUID(), "k1", "tok-ok")))
+        assertThatThrownBy(() -> service.pagar(new PagarReserva(USUARIO, UUID.randomUUID(), "k1", "tok-ok")))
                 .hasFieldOrPropertyWithValue("codigo", "reserva.indisponivel-para-pagamento");
     }
 
@@ -164,7 +164,7 @@ class PagamentoServiceTest {
         UUID reserva = reservaConhecida(1000);
         agora = T0.plus(Duration.ofMinutes(15));
 
-        assertThatThrownBy(() -> service.pagar(new PagarReserva(reserva, "k1", "tok-ok")))
+        assertThatThrownBy(() -> service.pagar(new PagarReserva(USUARIO, reserva, "k1", "tok-ok")))
                 .hasFieldOrPropertyWithValue("codigo", "reserva.expirada");
         assertThat(cobrancas).isZero();
     }
@@ -172,14 +172,32 @@ class PagamentoServiceTest {
     @Test
     void reservaExpiradaEstornaPagamentoAprovadoEBloqueiaNovos() {
         UUID reserva = reservaConhecida(1000);
-        Pagamento pago = service.pagar(new PagarReserva(reserva, "k1", "tok-ok")).pagamento();
+        Pagamento pago = service.pagar(new PagarReserva(USUARIO, reserva, "k1", "tok-ok")).pagamento();
 
         service.aoReservaExpirar(new ReservaExpirada(UUID.randomUUID(), T0, reserva));
         service.aoReservaExpirar(new ReservaExpirada(UUID.randomUUID(), T0, reserva)); // repetição
 
         assertThat(banco.get(pago.id()).status()).isEqualTo(StatusPagamento.ESTORNADO);
         assertThat(refs.get(reserva).expirada()).isTrue();
-        assertThatThrownBy(() -> service.pagar(new PagarReserva(reserva, "k2", "tok-ok")))
+        assertThatThrownBy(() -> service.pagar(new PagarReserva(USUARIO, reserva, "k2", "tok-ok")))
                 .hasFieldOrPropertyWithValue("codigo", "reserva.expirada");
+    }
+
+    @Test
+    void naoPagaReservaDeOutroUsuarioENemCobraNoGateway() {
+        UUID reserva = reservaConhecida(1000);
+
+        assertThatThrownBy(() -> service.pagar(new PagarReserva(OUTRO_USUARIO, reserva, "k1", "tok-ok")))
+                .hasFieldOrPropertyWithValue("codigo", "reserva.de-outro-usuario");
+        assertThat(cobrancas).isZero();
+    }
+
+    @Test
+    void repeticaoDaChaveFeitaPorOutroUsuarioNaoDevolveOPagamentoDoDono() {
+        UUID reserva = reservaConhecida(1000);
+        service.pagar(new PagarReserva(USUARIO, reserva, "k1", "tok-ok"));
+
+        assertThatThrownBy(() -> service.pagar(new PagarReserva(OUTRO_USUARIO, reserva, "k1", "tok-ok")))
+                .hasFieldOrPropertyWithValue("codigo", "reserva.de-outro-usuario");
     }
 }

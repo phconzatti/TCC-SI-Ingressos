@@ -54,4 +54,22 @@ public class IngressoService {
     public List<Ingresso> listarPorReserva(UUID reservaId) {
         return ingressos.listarPorReserva(reservaId);
     }
+
+    @Transactional(readOnly = true)
+    public List<Ingresso> listarDoUsuario(UUID reservaId, UUID usuarioId) {
+        List<Ingresso> todos = ingressos.listarPorReserva(reservaId);
+        if (todos.stream().anyMatch(i -> !i.usuarioId().equals(usuarioId))) {
+            throw new AcessoNegadoException("ingresso.de-outro-usuario", "Estes ingressos pertencem a outro usuário");
+        }
+        return todos;
+    }
+
+    @Transactional(readOnly = true)
+    public Ingresso buscarDoUsuario(String codigo, UUID usuarioId) {
+        Ingresso ingresso = buscarPorCodigo(codigo);
+        if (!ingresso.usuarioId().equals(usuarioId)) {
+            throw new AcessoNegadoException("ingresso.de-outro-usuario", "Este ingresso pertence a outro usuário");
+        }
+        return ingresso;
+    }
 }

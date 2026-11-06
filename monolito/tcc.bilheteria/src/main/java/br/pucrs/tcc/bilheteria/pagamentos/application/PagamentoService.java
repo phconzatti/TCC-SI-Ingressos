@@ -42,20 +42,27 @@ public class PagamentoService {
         }
     }
 
-    @Transactional
+        @Transactional
     public ResultadoDoPagamento pagar(PagarReserva cmd) {
+        ReservaRef reserva = reservas.buscar(cmd.reservaId()).orElseThrow(() -> new ConflitoException(
+                "reserva.indisponivel-para-pagamento",
+                "Reserva não encontrada ou ainda não disponível para pagamento. Tente novamente."));
+        if (!reserva.usuarioId().equals(cmd.usuarioId())) {
+            throw new AcessoNegadoException("reserva.de-outro-usuario", "Esta reserva pertence a outro usuário");
+        }
+
         Optional<Pagamento> existente = pagamentos.buscarPorChave(cmd.chaveDeIdempotencia());
         if (existente.isPresent()) {
             if (!existente.get().reservaId().equals(cmd.reservaId())) {
-                throw new ConflitoException("idempotencia.chave-reutilizada", "Esta chave de idempotência já foi usada para outra reserva");
+                throw new ConflitoException("idempotencia.chave-reutilizada",
+                        "Esta chave de idempotência já foi usada para outra reserva");
             }
             return new ResultadoDoPagamento(existente.get(), false);
         }
 
-        ReservaRef reserva = reservas.buscar(cmd.reservaId()).orElseThrow(() -> new ConflitoException("reserva.indisponivel-para-pagamento", "Reserva não encontrada ou ainda não disponível para pagamento. Tente novamente."));
-
         if (pagamentos.existeAtivoParaReserva(reserva.id())) {
-            throw new ConflitoException("pagamento.ja-existe", "Já existe um pagamento em andamento ou aprovado para esta reserva");
+            throw new ConflitoException("pagamento.ja-existe",
+                    "Já existe um pagamento em andamento ou aprovado para esta reserva");
         }
 
         Pagamento pagamento = Pagamento.iniciar(reserva, cmd.chaveDeIdempotencia(), relogio.instant());
