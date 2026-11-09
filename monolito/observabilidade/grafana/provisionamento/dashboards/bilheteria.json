@@ -1,0 +1,68 @@
+{
+  "title": "Bilheteria - Monólito",
+  "uid": "bilheteria-monolito",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Requisições por segundo (rota e status)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [{ "refId": "A", "legendFormat": "{{method}} {{uri}} {{status}}",
+        "expr": "sum by (method, uri, status) (rate(http_server_requests_seconds_count{uri!~\"/actuator.*\"}[1m]))" }]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Latência p95 por rota (s)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [{ "refId": "A", "legendFormat": "{{uri}}",
+        "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{uri!~\"/actuator.*\"}[1m])))" }]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Respostas de erro por segundo (4xx e 5xx)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [{ "refId": "A", "legendFormat": "{{status}}",
+        "expr": "sum by (status) (rate(http_server_requests_seconds_count{status=~\"4..|5..\"}[1m]))" }]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Eventos de negócio por segundo",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        { "refId": "A", "legendFormat": "reservas criadas", "expr": "rate(bilheteria_reservas_criadas_total[1m])" },
+        { "refId": "B", "legendFormat": "pagamentos aprovados", "expr": "rate(bilheteria_pagamentos_aprovados_total[1m])" },
+        { "refId": "C", "legendFormat": "reservas confirmadas", "expr": "rate(bilheteria_reservas_confirmadas_total[1m])" },
+        { "refId": "D", "legendFormat": "reservas expiradas", "expr": "rate(bilheteria_reservas_expiradas_total[1m])" }
+      ]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Ingressos vendidos (total)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 16, "w": 6, "h": 6 },
+      "targets": [{ "refId": "A", "expr": "bilheteria_ingressos_confirmados_total" }]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Pool de conexões (Hikari)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 6, "y": 16, "w": 9, "h": 6 },
+      "targets": [
+        { "refId": "A", "legendFormat": "ativas", "expr": "hikaricp_connections_active" },
+        { "refId": "B", "legendFormat": "aguardando", "expr": "hikaricp_connections_pending" },
+        { "refId": "C", "legendFormat": "máximo", "expr": "hikaricp_connections_max" }
+      ]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "CPU do processo (fração) e heap (bytes)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 15, "y": 16, "w": 9, "h": 6 },
+      "targets": [
+        { "refId": "A", "legendFormat": "CPU", "expr": "process_cpu_usage" },
+        { "refId": "B", "legendFormat": "heap usado", "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})" }
+      ]
+    }
+  ]
+}

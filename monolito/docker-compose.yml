@@ -1,0 +1,71 @@
+services:
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: bilheteria
+      POSTGRES_USER: bilheteria
+      POSTGRES_PASSWORD: bilheteria
+    ports:
+      - "5432:5432"
+    volumes:
+      - dados-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bilheteria -d bilheteria"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/bilheteria
+      SPRING_DATASOURCE_USERNAME: bilheteria
+      SPRING_DATASOURCE_PASSWORD: bilheteria
+
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "${POOL_DE_CONEXOES:-10}"
+      BILHETERIA_PAGAMENTOS_GATEWAY_LATENCIA: "${LATENCIA_DO_GATEWAY:-PT0S}"
+      BILHETERIA_RESERVAS_EXPIRACAO_ATIVA: "true"
+
+      BILHETERIA_USUARIOS_INICIAIS_ATIVO: "true"
+      JWT_SEGREDO: "segredo-de-laboratorio-troque-0123456789abcdef-xyz"
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
+
+    cpus: 2
+    mem_limit: 1g
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 40s
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    depends_on:
+      - app
+    volumes:
+      - ./observabilidade/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./observabilidade/grafana/provisionamento:/etc/grafana/provisioning:ro
+      - ./observabilidade/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+
+volumes:
+  dados-postgres:
