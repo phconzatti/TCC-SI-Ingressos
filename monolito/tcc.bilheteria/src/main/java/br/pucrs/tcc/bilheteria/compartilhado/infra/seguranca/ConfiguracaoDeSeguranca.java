@@ -56,6 +56,7 @@ public class ConfiguracaoDeSeguranca {
                 .authorizeHttpRequests(acesso -> acesso
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v3/api-docs/**", "/swagger-ui/**","/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.POST, "/usuarios", "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/eventos", "/eventos/*", "/disponibilidades").permitAll()
                         .requestMatchers(HttpMethod.POST, "/eventos", "/eventos/*/categorias",
@@ -69,7 +70,8 @@ public class ConfiguracaoDeSeguranca {
                                 .authenticated()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(servidor -> servidor
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(conversorDeToken())));
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(conversorDeToken())))
+                        ;
         return http.build();
     }
 

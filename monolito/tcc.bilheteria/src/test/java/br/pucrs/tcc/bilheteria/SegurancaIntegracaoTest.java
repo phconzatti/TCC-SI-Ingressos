@@ -3,6 +3,7 @@ package br.pucrs.tcc.bilheteria;
 import br.pucrs.tcc.bilheteria.compartilhado.kernel.Papel;
 import br.pucrs.tcc.bilheteria.usuarios.application.RegistrarUsuario;
 import br.pucrs.tcc.bilheteria.usuarios.application.UsuarioService;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -30,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SegurancaIntegracaoTest {
 
     @Autowired UsuarioService usuarios;
+    @Autowired JdbcTemplate jdbc;
 
     @Value("${local.server.port}")
     int porta;
@@ -233,5 +236,9 @@ class SegurancaIntegracaoTest {
         assertThat(checkIn.body()).contains("UTILIZADO");
         assertThat(chamar("POST", "/ingressos/" + codigo + "/check-in", portaria, null).statusCode())
                 .isEqualTo(409);
+
+        assertThat(VerificadorDeConsistencia.comViolacao(jdbc))
+                .as("invariantes violados após o fluxo completo")
+                .isEmpty();
     }
 }
