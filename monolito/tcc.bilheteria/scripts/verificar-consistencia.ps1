@@ -21,16 +21,17 @@ try {
         $c = $_ -split '\|', 4
         [pscustomobject]@{
             Ordem       = [int]$c[0]
-            Gravidade   = $c[1]
+            Tipo        = $c[1]          # ERRO = invariante obrigatório; AVISO = só alerta
             Verificacao = $c[2]
             Violacoes   = [long]$c[3]
+            Resultado   = if ([long]$c[3] -eq 0) { "OK" } elseif ($c[1] -eq 'ERRO') { "FALHOU" } else { "ATENCAO" }
         }
     }
 
     $linhas | Format-Table -AutoSize
 
-    $erros  = @($linhas | Where-Object { $_.Gravidade -eq 'ERRO'  -and $_.Violacoes -gt 0 })
-    $avisos = @($linhas | Where-Object { $_.Gravidade -eq 'AVISO' -and $_.Violacoes -gt 0 })
+    $erros  = @($linhas | Where-Object { $_.Tipo -eq 'ERRO'  -and $_.Violacoes -gt 0 })
+    $avisos = @($linhas | Where-Object { $_.Tipo -eq 'AVISO' -and $_.Violacoes -gt 0 })
 
     if ($avisos.Count -gt 0) { Write-Warning "$($avisos.Count) aviso(s): confira a tabela acima." }
     if ($erros.Count -gt 0) {
