@@ -1,152 +1,56 @@
-# Bilheteria: monólito (TCC, PUCRS)
+# TCC: Monólito × Microsserviços em um sistema de venda de ingressos
 
-Sistema de reserva e venda de ingressos inspirado no Alf.io. É o estudo de caso de um TCC que **compara uma
-arquitetura monolítica com uma de microsserviços**, com o mesmo domínio nas duas. Este repositório contém a
-**versão monolítica** (TC1). A versão de microsserviços e os testes de carga ficam para o TC2.
+Trabalho de Conclusão de Curso em Sistemas de Informação (PUCRS) que **compara uma arquitetura monolítica com uma
+de microsserviços**, implementando o mesmo domínio nas duas: um sistema de reserva e venda de ingressos inspirado
+no [Alf.io](https://alf.io). A comparação considera desempenho sob carga, consistência dos dados e complexidade
+de construção e operação.
 
-- Autor: Pedro Henrique Schneider Conzatti, Sistemas de Informação, PUCRS
-- Orientadora: Profa. Dra. Ana Paula Terra Bacelo
-- Stack: Java 21, Spring Boot 4.1.1, PostgreSQL 16, Flyway, Docker, Micrometer, Prometheus, Grafana
+- **Autor:** Pedro Henrique Schneider Conzatti
+- **Orientadora:** Profa. Dra. Ana Paula Terra Bacelo
+- **Instituição:** PUCRS, curso de Sistemas de Informação
 
-## O que o sistema faz
+## Ideia central
 
-Organizadores publicam eventos com categorias de ingresso. Clientes reservam (a reserva segura os ingressos por
-15 minutos), pagam e recebem um ingresso com código único. A portaria faz o check-in, que só vale uma vez.
-Duas garantias são o coração do estudo: **nunca vender mais que a capacidade** (mesmo com centenas de pedidos
-simultâneos) e **nunca cobrar nem emitir em duplicidade** (idempotência).
+As duas versões compartilham o **mesmo domínio**: as regras de negócio não mudam; só mudam a forma de implantar e a
+forma como os contextos conversam (chamadas em memória e transação única no monólito; mensagens assíncronas e
+bancos separados nos microsserviços). Dois requisitos guiam a avaliação:
 
-## Arquitetura em uma página
+1. nunca vender mais ingressos que a capacidade, mesmo com muitos pedidos simultâneos;
+2. nunca cobrar nem emitir ingressos em duplicidade.
 
-Monólito modular com arquitetura hexagonal "leve": cada contexto tem `domain` (Java puro), `application`
-(serviços e portas) e `adapter` (REST, JPA, listeners, jobs). Os contextos **não se chamam diretamente**: só
-trocam eventos de integração definidos em `compartilhado/contratos`.
+## Estado atual
 
-```mermaid
-flowchart LR
-  subgraph Monolito["Monólito (um processo, um banco, um schema por contexto)"]
-    EV[Eventos] -- EventoPublicado --> RE[Reservas]
-    RE -- ReservaCriada --> PA[Pagamentos]
-    RE -- ReservaExpirada --> PA
-    PA -- PagamentoAprovado --> RE
-    RE -- ReservaConfirmada --> IN[Ingressos]
-    US[Usuários]
-  end
-  US -. "token JWT" .-> EV
-  US -. "token JWT" .-> RE
-  US -. "token JWT" .-> PA
-  US -. "token JWT" .-> IN
-```
-
-No monólito, o pagamento aprovado percorre toda a cadeia **dentro de uma única transação**:
-
-```mermaid
-sequenceDiagram
-  actor C as Cliente
-  participant P as Pagamentos
-  participant R as Reservas
-  participant I as Ingressos
-  C->>P: POST /pagamentos (Idempotency-Key)
-  P->>P: confere o dono da reserva e a idempotência
-  P->>P: cobra no gateway
-  P-->>R: PagamentoAprovado
-  R->>R: confirma a reserva
-  R-->>I: ReservaConfirmada
-  I->>I: emite um ingresso por unidade
-  P-->>C: 201 APROVADO
-  Note over P,I: uma única transação: falha em qualquer passo desfaz tudo
-```
-
-Decisões e motivos: [`docs/adr`](docs/adr). Onde está cada coisa: [`docs/RASTREABILIDADE.md`](docs/RASTREABILIDADE.md).
-Como isto vira microsserviços: [`docs/EVOLUCAO-MICROSSERVICOS.md`](docs/EVOLUCAO-MICROSSERVICOS.md).
-
-## Requisitos
-
-JDK 21 e Docker (o Docker Desktop precisa estar aberto: os testes usam Testcontainers).
-
-## Como rodar
-
-### Testes
-
-```powershell
-./mvnw.cmd test      # Windows
-./mvnw test          # Linux/macOS
-```
-
-Cobrem domínio, serviços, integração com PostgreSQL real, concorrência (50 threads disputando 10 ingressos;
-10 check-ins simultâneos do mesmo código), idempotência, segurança, observabilidade, contrato OpenAPI,
-regras de arquitetura (ArchUnit, Spring Modulith) e o verificador de consistência.
-
-### Sistema completo (app + Postgres + Prometheus + Grafana)
-
-```powershell
-docker compose up -d --build
-docker compose ps
-```
-
-| O quê | Endereço |
-|---|---|
-| API | http://localhost:8081 |
-| Documentação (Swagger UI) | http://localhost:8081/swagger-ui.html |
-| Métricas | http://localhost:8081/actuator/prometheus |
-| Prometheus | http://localhost:9090 |
-| Grafana (admin / admin), dashboard "Bilheteria - Monólito" | http://localhost:3000 |
-
-Para desligar: `docker compose down` (mantém o banco) ou `docker compose down -v` (apaga o banco).
-
-> As credenciais abaixo e o `JWT_SEGREDO` do `docker-compose.yml` são **somente de laboratório**.
-
-| Papel | E-mail | Senha |
+| Etapa | Conteúdo | Situação |
 |---|---|---|
-| Organizador | organizador@bilheteria.local | organizador-123 |
-| Portaria | portaria@bilheteria.local | portaria-123 |
-| Cliente | cadastre-se em `POST /usuarios` | (mínimo de 8 caracteres) |
+| TC1 | Modelagem das duas versões e **monólito implementado** (cinco contextos, segurança, containers, observabilidade, verificação de consistência) | Concluída (tag `v0.1-tc1`) |
+| TC2 | Versão de **microsserviços** e **testes de carga** com k6 comparando as duas | Planejada |
 
-### Demonstração do fluxo completo
+## Mapa do repositório
 
-```powershell
-./scripts/demonstracao.ps1
-```
+| Pasta | Conteúdo |
+|---|---|
+| [`monolito/`](monolito/README.md) | A versão monolítica: código, `docker-compose`, Prometheus e Grafana. **Comece por aqui para executar.** |
+| [`docs/adr/`](docs/adr) | Decisões arquiteturais, com contexto, consequências e alternativas |
+| [`docs/api/`](docs/api) | Contratos OpenAPI |
+| [`docs/diagramas/`](docs/diagramas) | Diagramas e figuras |
+| [`docs/RASTREABILIDADE.md`](docs/RASTREABILIDADE.md) | Onde, no código e nos testes, está cada conceito da modelagem |
+| [`docs/EVOLUCAO-MICROSSERVICOS.md`](docs/EVOLUCAO-MICROSSERVICOS.md) | O que muda e o que permanece ao derivar os microsserviços; plano dos testes de carga |
+| `infra/` | Reservada para a infraestrutura comum às duas versões (TC2) |
 
-Cria evento, reserva, paga, emite os ingressos, faz o check-in e roda o verificador de consistência.
+## Começo rápido
 
-### Verificar a consistência do banco
-
-```powershell
-./scripts/verificar-consistencia.ps1     # 0 = consistente, 1 = invariante violado, 2 = falha ao executar
-```
-
-São 15 invariantes (ex.: ingressos emitidos nunca excedem a capacidade). Usado ao fim de cada teste de carga.
-
-### Variáveis dos experimentos
+Requisitos: JDK 21 e Docker.
 
 ```powershell
-$env:POOL_DE_CONEXOES = "20"; $env:LATENCIA_DO_GATEWAY = "PT0.3S"; docker compose up -d
+cd monolito
+docker compose up -d --build        # app + PostgreSQL + Prometheus + Grafana
+./tcc.bilheteria/scripts/demonstracao.ps1   # percorre o fluxo completo e confere a consistência
 ```
 
-## Estrutura
+Detalhes (testes, credenciais de laboratório, endereços, variáveis dos experimentos, limitações) em
+[`monolito/README.md`](monolito/README.md).
 
-```
-src/main/java/br/pucrs/tcc/bilheteria/
-  compartilhado/   kernel (tipos sem framework), contratos (eventos de integração), infra (segurança, métricas, erros)
-  eventos/  reservas/  pagamentos/  ingressos/  usuarios/
-      domain/          regras de negócio, Java puro
-      application/     serviços e portas (interfaces)
-      adapter/in/      REST, listeners de eventos, jobs
-      adapter/out/     JPA, gateway de pagamento, gerador de código, JWT, BCrypt
-src/main/resources/db/migration/   V1..V7 (Flyway)
-scripts/                           verificador de consistência e demonstração
-observabilidade/                   Prometheus e Grafana (provisionados por arquivo)
-docs/                              ADRs, rastreabilidade, evolução para microsserviços
-```
+## Tecnologias
 
-## Limitações conhecidas (estado do TC1)
-
-- Só a versão monolítica existe; microsserviços e testes de carga (k6) são o TC2.
-- Pagamento é **simulado** (`GatewaySimulado`); a chamada ao gateway acontece dentro da transação.
-- JWT HS256 com segredo compartilhado, sem refresh nem revogação; sem limite de tentativas de login,
-  recuperação de senha ou verificação de e-mail. Sem HTTPS nem CORS.
-- Métricas de negócio contam o evento publicado, não o commit do banco de dados.
-- `/actuator/prometheus` e a documentação OpenAPI são públicos (laboratório).
-- `GET /pagamentos/{id}` é restrito ao organizador (o pagamento não guarda o usuário).
-- O check-in não valida a data do evento.
-- Sem tracing distribuído nem agregação de logs.
+Java 21, Spring Boot 4, PostgreSQL 16, Flyway, Docker Compose, Micrometer, Prometheus, Grafana, Testcontainers,
+ArchUnit, Spring Modulith e k6 (previsto para o TC2).
