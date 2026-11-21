@@ -1,0 +1,69 @@
+classDiagram
+  class Usuario {
+    -UUID id
+    -String nome
+    -String email
+    -Papel papel
+  }
+  class Evento {
+    -UUID id
+    -String nome
+    -String local
+    -Instant dataDoEvento
+    -int capacidade
+    -StatusEvento status
+    +adicionarCategoria()
+    +publicar()
+  }
+  class Categoria {
+    -UUID id
+    -String nome
+    -Dinheiro preco
+    -int capacidade
+    -Periodo janelaDeVendas
+  }
+  class Disponibilidade {
+    -UUID id
+    -UUID eventoId
+    -int capacidade
+    -int reservados
+    +reservar(qtd, agora)
+    +liberar(qtd)
+  }
+  class Reserva {
+    -UUID usuarioId
+    -UUID categoriaId
+    -int quantidade
+    -Dinheiro valorTotal
+    -Instant expiraEm
+    -StatusReserva status
+    +confirmar(agora)
+    +expirar(agora, disp)
+  }
+  class ReservaRef {
+    -UUID id
+    -UUID usuarioId
+    -Dinheiro valor
+    -Instant expiraEm
+    -boolean expirada
+  }
+  class Pagamento {
+    -UUID reservaId
+    -String chaveDeIdempotencia
+    -Dinheiro valor
+    -StatusPagamento status
+    +aprovar(codigo)
+    +recusar(motivo)
+    +aoExpirarReserva()
+  }
+  class Ingresso {
+    -UUID reservaId
+    -int numero
+    -String codigo
+    -StatusIngresso status
+    +realizarCheckIn(agora)
+  }
+  Evento "1" *-- "1..*" Categoria
+  Reserva ..> Disponibilidade : categoriaId
+  Pagamento ..> ReservaRef : reservaId
+  Ingresso ..> Reserva : reservaId

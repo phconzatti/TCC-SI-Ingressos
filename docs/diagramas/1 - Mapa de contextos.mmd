@@ -1,0 +1,14 @@
+flowchart LR
+  U[Usuários]
+  E[Eventos]
+  R[Reservas]
+  P[Pagamentos]
+  I[Ingressos]
+  E -- EventoPublicado --> R
+  R -- ReservaCriada --> P
+  P -- PagamentoAprovado --> R
+  R -- ReservaConfirmada --> I
+  R -- ReservaExpirada --> P
+  R -. usuarioId .-> U
+  P -. usuarioId .-> U
+  I -. usuarioId .-> U

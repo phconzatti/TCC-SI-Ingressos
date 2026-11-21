@@ -1,0 +1,34 @@
+sequenceDiagram
+  actor C as Comprador
+  participant G as API Gateway
+  participant R as svc-reservas
+  participant B as RabbitMQ
+  participant P as svc-pagamentos
+  participant I as svc-ingressos
+  C->>G: POST /reservas
+  G->>R: encaminha
+  R->>R: transação local (reserva, vagas, outbox)
+  R-->>C: 201 (reservaId, valor, expiraEm)
+  R-)B: ReservaCriada (relay do outbox)
+  B-)P: ReservaCriada
+  P->>P: registrar ReservaRef
+  C->>G: POST /pagamentos (Idempotency-Key)
+  G->>P: encaminha
+  P->>P: validar ReservaRef e cobrar no gateway simulado
+  alt aprovado
+    P-->>C: 201 (APROVADO)
+    P-)B: PagamentoAprovado (outbox)
+    B-)R: PagamentoAprovado
+    R->>R: confirmar reserva
+    R-)B: ReservaConfirmada
+    B-)I: ReservaConfirmada
+    I->>I: emitir ingressos
+  else recusado
+    P-->>C: 201 (RECUSADO), a reserva continua aguardando
+  else reserva expirada ou ainda não registrada
+    P-->>C: 409
+  end
+  Note over R,P: sem pagamento até expiraEm, um job marca EXPIRADA e libera as vagas
+  R-)B: ReservaExpirada
+  B-)P: ReservaExpirada
+  P->>P: ReservaRef expirada, pagamento iniciado cancelado ou aprovado estornado

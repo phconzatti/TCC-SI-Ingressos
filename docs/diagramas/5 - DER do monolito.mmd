@@ -1,0 +1,79 @@
+erDiagram
+  USUARIO {
+    uuid id PK
+    string nome
+    string email UK
+    string senha_hash
+    string papel
+  }
+  EVENTO {
+    uuid id PK
+    string nome
+    string local_do_evento
+    timestamptz data_do_evento
+    int capacidade
+    string status
+  }
+  CATEGORIA {
+    uuid id PK
+    uuid evento_id FK
+    string nome
+    bigint preco_centavos
+    int capacidade
+    timestamptz inicio_vendas
+    timestamptz fim_vendas
+  }
+  DISPONIBILIDADE {
+    uuid id PK
+    uuid evento_id
+    int capacidade
+    int reservados
+    timestamptz inicio_vendas
+    timestamptz fim_vendas
+  }
+  RESERVA {
+    uuid id PK
+    uuid usuario_id
+    uuid categoria_id FK
+    int quantidade
+    bigint valor_total_centavos
+    string status
+    timestamptz criada_em
+    timestamptz expira_em
+  }
+  RESERVA_REF {
+    uuid id PK
+    uuid usuario_id
+    uuid evento_id
+    bigint valor_centavos
+    timestamptz expira_em
+    boolean expirada
+  }
+  PAGAMENTO {
+    uuid id PK
+    uuid reserva_id FK
+    string chave_idempotencia UK
+    bigint valor_centavos
+    string status
+    string motivo
+    string codigo_gateway
+    timestamptz criado_em
+  }
+  INGRESSO {
+    uuid id PK
+    uuid reserva_id
+    int numero
+    uuid evento_id
+    uuid categoria_id
+    uuid usuario_id
+    string codigo UK
+    string status
+    timestamptz emitido_em
+    timestamptz utilizado_em
+  }
+  EVENTO ||--|{ CATEGORIA : contem
+  DISPONIBILIDADE ||--o{ RESERVA : "reservada em"
+  RESERVA_REF ||--o{ PAGAMENTO : paga
+  CATEGORIA ||..o| DISPONIBILIDADE : "copia (ID)"
+  RESERVA ||..o| RESERVA_REF : "copia (ID)"
+  RESERVA ||..o{ INGRESSO : "origina (ID)"

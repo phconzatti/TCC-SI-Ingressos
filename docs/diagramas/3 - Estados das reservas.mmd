@@ -1,0 +1,7 @@
+stateDiagram-v2
+  [*] --> AGUARDANDO_PAGAMENTO: reserva criada
+  AGUARDANDO_PAGAMENTO --> CONFIRMADA: pagamento aprovado
+  AGUARDANDO_PAGAMENTO --> EXPIRADA: prazo vencido (vagas devolvidas)
+  AGUARDANDO_PAGAMENTO --> AGUARDANDO_PAGAMENTO: pagamento recusado (nova tentativa)
+  CONFIRMADA --> [*]
+  EXPIRADA --> [*]

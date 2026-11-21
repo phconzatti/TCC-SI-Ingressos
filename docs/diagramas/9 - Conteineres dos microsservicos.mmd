@@ -1,0 +1,24 @@
+flowchart LR
+  K6["k6 (fora dos limites)"] --> GW[API Gateway]
+  subgraph DOCKER[Docker Compose]
+    GW --> SU[svc-usuarios]
+    GW --> SE[svc-eventos]
+    GW --> SR[svc-reservas]
+    GW --> SP[svc-pagamentos]
+    GW --> SI[svc-ingressos]
+    SE --- BE[("PostgreSQL<br/>Eventos")]
+    SU --- BU[("PostgreSQL<br/>Usuários")]
+    SR --- BR[("PostgreSQL<br/>Reservas")]
+    SP --- BP[("PostgreSQL<br/>Pagamentos")]
+    SI --- BI[("PostgreSQL<br/>Ingressos")]
+    MQ{{RabbitMQ}}
+    SE --- MQ
+    SR --- MQ
+    SP --- MQ
+    SI --- MQ
+    PROM[Prometheus]
+    CAD[cAdvisor]
+    GRAF[Grafana]
+    PROM --> GRAF
+    CAD --> PROM
+  end

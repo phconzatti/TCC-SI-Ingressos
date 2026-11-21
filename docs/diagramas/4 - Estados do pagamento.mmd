@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> INICIADO: POST /pagamentos
+  INICIADO --> APROVADO: gateway aprova
+  INICIADO --> RECUSADO: gateway recusa
+  INICIADO --> CANCELADO: reserva expirou antes da confirmação
+  APROVADO --> ESTORNADO: reserva expirou após a aprovação
+  RECUSADO --> [*]
+  CANCELADO --> [*]
+  ESTORNADO --> [*]

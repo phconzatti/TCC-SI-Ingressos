@@ -1,0 +1,13 @@
+flowchart LR
+  K6["k6 (fora dos limites)"] --> APP
+  subgraph DOCKER[Docker Compose]
+    APP["app-monolito<br/>Spring Boot"]
+    DB[("PostgreSQL<br/>um banco, 5 esquemas")]
+    PROM[Prometheus]
+    GRAF[Grafana]
+    CAD["cAdvisor (TC2)"]
+  end
+  APP --> DB
+  PROM -- "/actuator/prometheus" --> APP
+  PROM -.-> CAD
+  GRAF --> PROM

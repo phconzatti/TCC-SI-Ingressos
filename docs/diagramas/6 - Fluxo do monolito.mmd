@@ -1,0 +1,23 @@
+sequenceDiagram
+  actor C as Comprador
+  participant R as Reservas
+  participant P as Pagamentos
+  participant I as Ingressos
+  C->>R: POST /reservas
+  R->>R: travar Disponibilidade e criar Reserva (AGUARDANDO_PAGAMENTO)
+  R-->>P: ReservaCriada (registra ReservaRef)
+  R-->>C: 201 (reservaId, valor, expiraEm)
+  C->>P: POST /pagamentos (reservaId, Idempotency-Key)
+  P->>P: validar ReservaRef e prazo, cobrar no gateway simulado
+  alt aprovado
+    P-->>R: PagamentoAprovado
+    R->>R: confirmar reserva
+    R-->>I: ReservaConfirmada
+    I->>I: emitir um ingresso por unidade
+    P-->>C: 201 (APROVADO)
+  else recusado
+    P-->>C: 201 (RECUSADO), a reserva continua aguardando
+  else reserva expirada ou ainda não registrada
+    P-->>C: 409
+  end
+  Note over R,P: sem pagamento até expiraEm, um job (a cada 30 s) marca EXPIRADA, libera as vagas e publica ReservaExpirada, e Pagamentos cancela ou estorna
